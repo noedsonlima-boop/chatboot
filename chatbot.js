@@ -2,7 +2,6 @@ require("dotenv").config();
 const BOT_ATIVO = process.env.BOT_ATIVO === "true";
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
-
 const client = new Client({
   authStrategy: new LocalAuth({
     dataPath: "./session"
@@ -16,7 +15,7 @@ const client = new Client({
     ]
   }
 });
-
+// deploy fix A
 client.on("qr", qr => {
   console.log("📲 Escaneie o QR Code abaixo:");
   qrcode.generate(qr, { small: true });
