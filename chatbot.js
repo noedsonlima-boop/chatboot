@@ -1,43 +1,36 @@
 require("dotenv").config();
-const BOT_ATIVO = process.env.BOT_ATIVO === "true";
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
+
+// Sessão específica pro BOT
 const client = new Client({
   authStrategy: new LocalAuth({
-    dataPath: "./session"
+    clientId: "BOT-AGENTE"  // nome único pra não misturar sessões
   }),
-puppeteer: {
-  headless: true,
-  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-  args: [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--single-process"
-  ]
-}
+  puppeteer: {
+    headless: false,  →  headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu"
+    ]
+  }
 });
-// deploy fix A
-client.on("qr", qr => {
-  console.log("📲 Escaneie o QR Code abaixo:");
+
+client.on("qr", (qr) => {
+  console.log("📱 NOVO QR pro BOT (escaneie com WhatsApp Business):");
   qrcode.generate(qr, { small: true });
 });
 
 client.on("ready", () => {
-  console.log("✅ Bot conectado com sucesso!");
+  console.log("✅ BOT conectado com NOVO número!");
+  console.log("📱 Número do bot:", client.info.wid.user);
 });
 
-client.on("message", async msg => {
-  if (!BOT_ATIVO) return; // DESLIGAR O BOT
-  if (msg.from.includes("@g.us")) return; // ingnora grupos
-  if (!msg.body) return;
-
-  console.log("📩 Mensagem recebida:", msg.body);
-
-  if (msg.body.toLowerCase() === "oi") {
-    await msg.reply("Oi 👋 Estou online e funcionando!");
-  }
+client.on("message", async (message) => {
+  console.log("Mensagem recebida:", message.body);
+  await message.reply("🤖 Agente IA ativo! Sua mensagem foi recebida.");
 });
 
 client.initialize();
