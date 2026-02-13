@@ -6,9 +6,12 @@ const OpenAI = require("openai");
 const MEU_NUMERO = "5511957966910@c.us";
 let MODO_PRODUCAO = false;
 
+const OpenAI = require("openai");
+
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_KEY
+    apiKey: process.env.OPENAI_API_KEY
 });
+
 
 const historico = {};
 // ==========================================
