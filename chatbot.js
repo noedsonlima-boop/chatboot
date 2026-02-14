@@ -1,24 +1,33 @@
+require('dotenv').config();
+
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const OpenAI = require("openai");
+const express = require("express");
 
 // ================= CONFIG =================
 const MEU_NUMERO = "5511957966910@c.us";
-let MODO_PRODUCAO = false;
-
-const OpenAI = require("openai");
+let MODO_PRODUCAO = true; // já inicia em produção
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-
 const historico = {};
 // ==========================================
 
+// 🔥 CLIENT CONFIG PROFISSIONAL (RAILWAY SAFE)
 const client = new Client({
-    authStrategy: new LocalAuth()
+    authStrategy: new LocalAuth({
+        dataPath: './session'
+    }),
+    puppeteer: {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
 });
+
+// ================= EVENTOS WHATSAPP =================
 
 client.on('qr', (qr) => {
     console.log('📱 ESCANEIE O QR CODE:');
@@ -26,8 +35,18 @@ client.on('qr', (qr) => {
 });
 
 client.on('ready', () => {
-    console.log('🚀 IA VENDEDORA ONLINE');
+    console.log('🚀 IA NTEC ONLINE 24H');
 });
+
+client.on('disconnected', (reason) => {
+    console.log('❌ Cliente desconectado:', reason);
+});
+
+client.on('auth_failure', (msg) => {
+    console.log('❌ Falha na autenticação:', msg);
+});
+
+// ================= FUNÇÃO IA =================
 
 async function responderComIA(numero, texto) {
 
@@ -36,25 +55,27 @@ async function responderComIA(numero, texto) {
             {
                 role: "system",
                 content: `
-Você é atendente profissional da NTEC Pluservices.
+Você é ENI, atendente profissional da NTEC Pluservices.
 
-Objetivo:
-- Atender clientes
-- Entender o problema
-- Pedir modelo do aparelho
-- Pedir descrição do defeito
-- Incentivar envio de foto
-- Conduzir para orçamento
-- Agir como vendedor estratégico
+Fluxo obrigatório de atendimento:
+
+1) Cumprimente e diga: "Olá, eu sou a ENI da NTEC Pluservices 😊"
+2) Pergunte o nome da pessoa
+3) Pergunte qual aparelho precisa de assistência
+4) Peça marca e modelo
+5) Peça descrição detalhada do problema
+6) Sugira testes simples se possível
+7) Se necessário, encaminhe para orçamento ou visita técnica
+8) Sempre conduza para o próximo passo
 
 Seja:
-- Educado
-- Direto
+- Educada
 - Profissional
-- Natural
-- Comercial (leve persuasão)
+- Clara
+- Estratégica
+- Comercial de forma natural
 
-Sempre conduza para próximo passo.
+Sempre finalize direcionando para ação.
 `
             }
         ];
@@ -65,10 +86,15 @@ Sempre conduza para próximo passo.
         content: texto
     });
 
+    // Limite inteligente de histórico (evita travar Railway)
+    if (historico[numero].length > 15) {
+        historico[numero].splice(1, 5);
+    }
+
     const resposta = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: historico[numero],
-        temperature: 0.7
+        temperature: 0.6
     });
 
     const mensagem = resposta.choices[0].message.content;
@@ -81,44 +107,43 @@ Sempre conduza para próximo passo.
     return mensagem;
 }
 
+// ================= RECEBIMENTO MENSAGENS =================
+
 client.on('message', async (msg) => {
 
-    const texto = msg.body;
+    if (!msg.body) return;
+
+    const texto = msg.body.trim();
     const numero = msg.from;
 
-    if (numero === MEU_NUMERO) {
+    if (!MODO_PRODUCAO && numero !== MEU_NUMERO) return;
 
-        if (texto.toLowerCase() === 'producao') {
-            MODO_PRODUCAO = true;
-            msg.reply('🚀 MODO PRODUÇÃO ATIVADO');
-            return;
-        }
-
-        if (texto.toLowerCase() === 'teste') {
-            MODO_PRODUCAO = false;
-            msg.reply('🧠 MODO TESTE ATIVADO');
-            return;
-        }
-    }
-
-    if (MODO_PRODUCAO || numero === MEU_NUMERO) {
-
-        try {
-            const resposta = await responderComIA(numero, texto);
-            msg.reply(resposta);
-        } catch (erro) {
-            console.log(erro);
-            msg.reply("Erro na IA. Verifique API Key ou crédito.");
-        }
-
+    try {
+        const resposta = await responderComIA(numero, texto);
+        await msg.reply(resposta);
+    } catch (erro) {
+        console.log("ERRO IA:", erro);
+        await msg.reply("⚠️ Sistema temporariamente instável. Tente novamente em instantes.");
     }
 
 });
 
+// ================= INICIALIZA =================
+
 client.initialize();
 
-// Mantém servidor vivo no Railway
-const express = require("express");
+// ================= PROTEÇÃO GLOBAL =================
+
+process.on('unhandledRejection', (reason) => {
+    console.log('⚠️ Erro não tratado:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.log('⚠️ Exceção não capturada:', error);
+});
+
+// ================= SERVIDOR RAILWAY =================
+
 const app = express();
 
 app.get("/", (req, res) => {
@@ -128,4 +153,3 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
     console.log("Servidor web ativo");
 });
-
