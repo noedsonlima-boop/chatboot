@@ -1,9 +1,9 @@
 require('dotenv').config();
 
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
 const OpenAI = require("openai");
 const express = require("express");
+const QRCode = require("qrcode");
 
 // ================= CONFIG =================
 const MEU_NUMERO = "5511957966910@c.us";
@@ -32,7 +32,7 @@ let qrCodeAtual = null;
 
 client.on('qr', (qr) => {
     qrCodeAtual = qr;
-    console.log("QR Code recebido. Acesse /qr para escanear.");
+    console.log("📱 QR gerado. Acesse /qr para escanear.");
 });
 
 client.on('ready', () => {
@@ -58,18 +58,20 @@ async function responderComIA(numero, texto) {
 Você é ENI, atendente profissional da NTEC Pluservices.
 
 Fluxo obrigatório:
-1) Cumprimente e diga: "Olá, eu sou a ENI da NTEC Pluservices 😊"
+1) Cumprimente: "Olá, eu sou a ENI da NTEC Pluservices 😊"
 2) Pergunte o nome
 3) Pergunte qual aparelho
 4) Peça marca e modelo
-5) Peça descrição do defeito
+5) Peça descrição detalhada do defeito
 6) Incentive envio de foto
-7) Conduza para orçamento
-8) Sempre finalize direcionando para o próximo passo
+7) Se possível, sugira testes simples
+8) Se não resolver, encaminhe para orçamento ou visita técnica
+9) Sempre finalize direcionando para o próximo passo
 
 Seja:
 - Profissional
 - Clara
+- Organizada
 - Estratégica
 - Comercial de forma natural
 `
@@ -82,6 +84,7 @@ Seja:
         content: texto
     });
 
+    // Limite de histórico para não travar memória
     if (historico[numero].length > 15) {
         historico[numero].splice(1, 5);
     }
@@ -116,13 +119,13 @@ client.on('message', async (msg) => {
 
         if (texto.toLowerCase() === 'teste') {
             MODO_PRODUCAO = false;
-            msg.reply('🧠 MODO TESTE ATIVADO');
+            await msg.reply('🧠 MODO TESTE ATIVADO');
             return;
         }
 
         if (texto.toLowerCase() === 'producao') {
             MODO_PRODUCAO = true;
-            msg.reply('🚀 MODO PRODUÇÃO ATIVADO');
+            await msg.reply('🚀 MODO PRODUÇÃO ATIVADO');
             return;
         }
     }
@@ -132,7 +135,7 @@ client.on('message', async (msg) => {
         await msg.reply(resposta);
     } catch (erro) {
         console.log("ERRO IA:", erro);
-        await msg.reply("⚠️ Sistema temporariamente instável. Tente novamente em instantes.");
+        await msg.reply("⚠️ Sistema temporariamente instável. Tente novamente.");
     }
 });
 
@@ -152,18 +155,24 @@ process.on('uncaughtException', (error) => {
 const app = express();
 
 app.get("/", (req, res) => {
-    res.send("ENI - NTEC ONLINE");
+    res.send("ENI - NTEC ONLINE 🚀");
 });
 
 app.get('/qr', async (req, res) => {
     if (!qrCodeAtual) {
-        return res.send("QR ainda não gerado.");
+        return res.send("QR ainda não gerado. Aguarde...");
     }
 
-    const qrImage = await require('qrcode').toDataURL(qrCodeAtual);
-    res.send(`<img src="${qrImage}" />`);
+    const qrImage = await QRCode.toDataURL(qrCodeAtual);
+    res.send(`
+        <h2>Escaneie o QR abaixo:</h2>
+        <img src="${qrImage}" />
+    `);
 });
 
-app.listen(process.env.PORT || 3000, () => {
-    console.log("Servidor web ativo");
+// 🚀 PORTA OBRIGATÓRIA DO RAILWAY
+const PORT = process.env.PORT;
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("🌍 Servidor web ativo na porta " + PORT);
 });
