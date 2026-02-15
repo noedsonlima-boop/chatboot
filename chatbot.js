@@ -28,9 +28,11 @@ const client = new Client({
 });
 
 // ================= EVENTOS =================
+let qrCodeAtual = null;
+
 client.on('qr', (qr) => {
-    console.log('📱 ESCANEIE O QR CODE:');
-    qrcode.generate(qr, { small: true });
+    qrCodeAtual = qr;
+    console.log("QR Code recebido. Acesse /qr para escanear.");
 });
 
 client.on('ready', () => {
@@ -151,6 +153,15 @@ const app = express();
 
 app.get("/", (req, res) => {
     res.send("ENI - NTEC ONLINE");
+});
+
+app.get('/qr', async (req, res) => {
+    if (!qrCodeAtual) {
+        return res.send("QR ainda não gerado.");
+    }
+
+    const qrImage = await require('qrcode').toDataURL(qrCodeAtual);
+    res.send(`<img src="${qrImage}" />`);
 });
 
 app.listen(process.env.PORT || 3000, () => {
