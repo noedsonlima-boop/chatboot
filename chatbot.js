@@ -171,8 +171,9 @@ app.get('/qr', async (req, res) => {
 });
 
 // 🚀 PORTA OBRIGATÓRIA DO RAILWAY
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log("🌍 Servidor web ativo na porta " + PORT);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌍 Servidor web ativo na porta ${PORT}`);
 });
+
